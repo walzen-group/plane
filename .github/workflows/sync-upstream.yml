@@ -70,3 +70,15 @@ jobs:
             -H "anthropic-beta: experimental-cc-routine-2026-04-01" \
             -H 'Content-Type: application/json' \
             -d "$(jq -nc --arg text "$TEXT" '{text:$text}')"
+
+  keepalive:
+    # GitHub disables scheduled workflows after 60 days without repository
+    # activity. Re-enabling an active workflow through the API resets that timer.
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Re-enable this workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/sync-upstream.yml/enable"
