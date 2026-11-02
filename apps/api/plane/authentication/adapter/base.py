@@ -39,6 +39,10 @@ class Adapter:
     # OAuth/OIDC adapters keep the default of False.
     is_credential_provider = False
 
+    # Providers whose sign-up does not prove that the caller owns the email
+    # address (no code sent to it, no identity provider behind it).
+    UNVERIFIED_EMAIL_PROVIDERS = frozenset({"email"})
+
     def __init__(self, request, provider, callback=None):
         self.request = request
         self.provider = provider
@@ -106,9 +110,16 @@ class Adapter:
     def __check_signup(self, email):
         """Check if sign up is enabled or not and raise exception if not enabled"""
 
-        # A pending workspace invite always allows the account to be created,
-        # regardless of provider or the signup flags below.
-        if WorkspaceMemberInvite.objects.filter(email=email).exists():
+        # A pending workspace invite allows the account to be created regardless
+        # of the signup flags below, but only through a provider that proves the
+        # caller controls the invited address: the magic code is mailed to it, and
+        # an OAuth/OIDC provider vouches for it. Email/password sign-up proves
+        # nothing about the address, so an invite alone does not open it; those
+        # sign-ups go through the gates below like any other new account.
+        if (
+            self.provider not in self.UNVERIFIED_EMAIL_PROVIDERS
+            and WorkspaceMemberInvite.objects.filter(email=email).exists()
+        ):
             return True
 
         # Get configuration values
