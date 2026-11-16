@@ -7,13 +7,15 @@
 import { useState } from "react";
 import { observer } from "mobx-react";
 import useSWR from "swr";
-import { setPromiseToast } from "@plane/propel/toast";
-import { Loader, ToggleSwitch } from "@plane/ui";
+// plane internal packages
+import { Switch } from "@makeplane/propel/components/switch";
 // assets
 import OIDCLogo from "@/app/assets/logos/oidc-logo.svg?url";
 // components
 import { AuthenticationMethodCard } from "@/components/authentication/authentication-method-card";
 import { PageWrapper } from "@/components/common/page-wrapper";
+import { Skeleton } from "@plane/blocks/skeleton";
+import { setPromiseToast } from "@plane/blocks/toast";
 // hooks
 import { useInstance } from "@/hooks/store";
 // types
@@ -60,6 +62,9 @@ const InstanceOIDCAuthenticationPage = observer(function InstanceOIDCAuthenticat
       setIsSubmitting(false);
     }
   };
+
+  const isOIDCEnabled = enableOIDCConfig === "1";
+
   return (
     <PageWrapper
       customHeader={
@@ -68,14 +73,11 @@ const InstanceOIDCAuthenticationPage = observer(function InstanceOIDCAuthenticat
           description="Allow members to login or sign up to plane through your OIDC identity provider."
           icon={<img src={OIDCLogo} height={24} width={24} alt="OIDC Logo" />}
           config={
-            <ToggleSwitch
-              value={Boolean(parseInt(enableOIDCConfig))}
-              onChange={() => {
-                if (Boolean(parseInt(enableOIDCConfig)) === true) {
-                  updateConfig("IS_OIDC_ENABLED", "0");
-                } else {
-                  updateConfig("IS_OIDC_ENABLED", "1");
-                }
+            <Switch
+              aria-label="Enable OIDC authentication"
+              checked={isOIDCEnabled}
+              onCheckedChange={() => {
+                updateConfig("IS_OIDC_ENABLED", isOIDCEnabled ? "0" : "1");
               }}
               size="sm"
               disabled={isSubmitting || !formattedConfig}
@@ -89,13 +91,13 @@ const InstanceOIDCAuthenticationPage = observer(function InstanceOIDCAuthenticat
       {formattedConfig ? (
         <InstanceOIDCConfigForm config={formattedConfig} />
       ) : (
-        <Loader className="space-y-8">
-          <Loader.Item height="50px" width="25%" />
-          <Loader.Item height="50px" />
-          <Loader.Item height="50px" />
-          <Loader.Item height="50px" />
-          <Loader.Item height="50px" width="50%" />
-        </Loader>
+        <Skeleton className="space-y-8">
+          <Skeleton.Item height="50px" width="25%" />
+          <Skeleton.Item height="50px" />
+          <Skeleton.Item height="50px" />
+          <Skeleton.Item height="50px" />
+          <Skeleton.Item height="50px" width="50%" />
+        </Skeleton>
       )}
     </PageWrapper>
   );
