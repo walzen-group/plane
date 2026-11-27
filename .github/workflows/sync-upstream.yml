@@ -1,14 +1,16 @@
-name: Sync upstream master + rebase OIDC patch
+name: Sync upstream master into the OIDC branch
 
-# Rebases this branch (containing the OIDC patch as one commit on top of
-# makeplane's master) onto the latest upstream/master, then force-pushes.
+# Merges the latest makeplane master into this branch (which carries our OIDC
+# patches), then pushes. The branch only ever moves forward, so it never needs
+# a force-push and every fix-up can land as a normal PR.
 # Runs daily; can also be triggered manually from the Actions tab.
 #
-# If the rebase fails (real upstream-vs-patch conflict), the workflow fails —
-# resolve locally with:
-#   git fetch upstream master && git rebase upstream/master
-#   # fix conflicts, git rebase --continue
-#   git push --force-with-lease origin oidc-on-master
+# If the merge conflicts (upstream changed a line our patches also touch), the
+# workflow fails and notifies the Claude routine, which opens a PR with the
+# conflicts resolved (MAINTENANCE.md §3.3). To resolve by hand instead:
+#   git fetch upstream master && git merge upstream/master
+#   # fix conflicts, git add -A && git commit
+#   git push origin oidc-on-master
 
 on:
   schedule:
@@ -24,7 +26,7 @@ env:
   UPSTREAM_BRANCH: master
 
 jobs:
-  rebase:
+  merge:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout patch branch
@@ -44,11 +46,11 @@ jobs:
           git remote add upstream "$UPSTREAM_REPO"
           git fetch upstream "$UPSTREAM_BRANCH"
 
-      - name: Rebase onto upstream/${{ env.UPSTREAM_BRANCH }}
-        run: git rebase "upstream/${UPSTREAM_BRANCH}"
+      - name: Merge upstream/${{ env.UPSTREAM_BRANCH }}
+        run: git merge --no-edit "upstream/${UPSTREAM_BRANCH}"
 
-      - name: Push (force-with-lease)
-        run: git push --force-with-lease origin "$PATCH_BRANCH"
+      - name: Push
+        run: git push origin "$PATCH_BRANCH"
 
       - name: Notify Claude routine on failure (optional)
         if: failure()
@@ -63,7 +65,7 @@ jobs:
             echo "Webhook not configured, skipping."
             exit 0
           fi
-          TEXT="Rebase of ${PATCH_BRANCH} onto ${UPSTREAM_BRANCH} failed in ${REPO}. Run: ${RUN_URL}. Please resolve the conflicts and force-push with --force-with-lease."
+          TEXT="Merging upstream ${UPSTREAM_BRANCH} into ${PATCH_BRANCH} failed in ${REPO}. Run: ${RUN_URL}. Follow MAINTENANCE.md section 3.3 on ${PATCH_BRANCH}: resolve the conflicts in a merge commit and open a PR against ${PATCH_BRANCH}."
           curl -sS -X POST "$CLAUDE_ROUTINE_URL" \
             -H "Authorization: Bearer $CLAUDE_ROUTINE_TOKEN" \
             -H "anthropic-version: 2023-06-01" \
